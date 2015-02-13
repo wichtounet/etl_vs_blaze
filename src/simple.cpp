@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <random>
+#include <numeric>
 
 #include <blaze/Math.h>
 
@@ -34,20 +35,26 @@ void b_randomize(T1& container, TT&... containers){
     b_randomize(containers...);
 }
 
-std::string duration_str(std::size_t duration_us){
-    double duration = duration_us;
+std::string clean_duration(std::string value){
+    while(value.size() > 1 && value.back() == '0'){
+        value.pop_back();
+    }
 
-    if(duration > 1000 * 1000){
-        return std::to_string(duration / 1000.0 / 1000.0) + "s";
-    } else if(duration > 1000){
-        return std::to_string(duration / 1000.0) + "ms";
+    return value;
+}
+
+std::string duration_str(std::size_t duration_us){
+    if(duration_us > 1000 * 1000){
+        return clean_duration(std::to_string(duration_us / 1000.0 / 1000.0)) + "s";
+    } else if(duration_us > 1000){
+        return clean_duration(std::to_string(duration_us / 1000.0)) + "ms";
     } else {
-        return std::to_string(duration_us) + "us";
+        return clean_duration(std::to_string(duration_us)) + "us";
     }
 }
 
 template<typename Functor, typename... T>
-void measure(const std::string& title, const std::string& reference, Functor&& functor, T&... references){
+auto measure_only(Functor&& functor, T&... references){
     for(std::size_t i = 0; i < 100; ++i){
         b_randomize(references...);
         functor();
@@ -64,92 +71,87 @@ void measure(const std::string& title, const std::string& reference, Functor&& f
         duration_acc += duration.count();
     }
 
-    std::cout << title << " took " << duration_str(duration_acc) << " (reference: " << reference << ")\n";
+    return duration_acc;
 }
 
-template<std::size_t D>
-void bench_blaze_add_static(const std::string& reference){
-    blaze::StaticVector<double, D> a;
-    blaze::StaticVector<double, D> b;
-    blaze::StaticVector<double, D> c;
-
-    measure("blaze_add_static(" + std::to_string(D) + ")", reference, [&a, &b, &c](){
-        c = a + b;
-    }, a, b);
+template<typename Functor, typename... T>
+void measure(const std::string& title, const std::string& reference, Functor&& functor, T&... references){
+    std::cout << title << " took " << duration_str(measure_only(functor, references...)) << " (reference: " << reference << ")\n";
 }
 
-template<std::size_t D>
-void bench_etl_add_static(const std::string& reference){
-    etl::fast_vector<double, D> a;
-    etl::fast_vector<double, D> b;
-    etl::fast_vector<double, D> c;
+template<template<typename, std::size_t> class T, std::size_t D>
+struct add_static {
+    static auto get(){
+        T<double, D> a,b,c;
+        return measure_only([&a, &b, &c](){c = a + b;}, a, b);
+    }
+};
 
-    measure("etl_add_static(" + std::to_string(D) + ")", reference, [&a, &b, &c](){
-        c = a + b;
-    }, a, b);
+template<template<typename> class T, std::size_t D>
+struct add_dynamic {
+    static auto get(){
+        T<double> a(D), b(D), c(D);
+        return measure_only([&a, &b, &c](){c = a + b;}, a, b);
+    }
+};
+
+template<template<typename> class T, std::size_t D>
+struct add_complex {
+    static auto get(){
+        T<double> a(D), b(D), c(D);
+        return measure_only([&a, &b, &c](){c = a + b + a + b + a + a + b + a + a;}, a, b);
+    }
+};
+
+std::string format(std::string value, std::size_t max){
+    return value + (value.size() < max ? std::string(std::max(0UL, max - value.size()), ' ') : "");
 }
 
-template<std::size_t D>
-void bench_blaze_add_dynamic(const std::string& reference){
-    blaze::DynamicVector<double> a(D);
-    blaze::DynamicVector<double> b(D);
-    blaze::DynamicVector<double> c(D);
-
-    measure("blaze_add_dynamic(" + std::to_string(D) + ")", reference, [&a, &b, &c](){
-        c = a + b;
-    }, a, b);
+template<template<template<typename, std::size_t> class, std::size_t> class T, template<typename, std::size_t> class B, template<typename, std::size_t> class E, std::size_t D>
+void bench_static(const std::string& title){
+    std::cout << "| ";
+    std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
+    std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
+    std::cout << std::endl;
 }
 
-template<std::size_t D>
-void bench_etl_add_dynamic(const std::string& reference){
-    etl::dyn_vector<double> a(D);
-    etl::dyn_vector<double> b(D);
-    etl::dyn_vector<double> c(D);
-
-    measure("etl_add_dynamic(" + std::to_string(D) + ")", reference, [&a, &b, &c](){
-        c = a + b;
-    }, a, b);
+template<template<template<typename> class, std::size_t> class T, template<typename> class B, template<typename> class E, std::size_t D>
+void bench_dyn(const std::string& title){
+    std::cout << "| ";
+    std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
+    std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
+    std::cout << std::endl;
 }
 
-template<std::size_t D>
-void bench_blaze_add_dynamic_complex(const std::string& reference){
-    blaze::DynamicVector<double> a(D);
-    blaze::DynamicVector<double> b(D);
-    blaze::DynamicVector<double> c(D);
+template<typename T, std::size_t D>
+using etl_static_vector = etl::fast_vector<T, D>;
 
-    measure("blaze_add_dynamic_complex(" + std::to_string(D) + ")", reference, [&a, &b, &c](){
-        c = a + b + a + b + a + b;
-    }, a, b);
-}
+template<typename T, std::size_t D>
+using blaze_static_vector = blaze::StaticVector<T, D>;
 
-template<std::size_t D>
-void bench_etl_add_dynamic_complex(const std::string& reference){
-    etl::dyn_vector<double> a(D);
-    etl::dyn_vector<double> b(D);
-    etl::dyn_vector<double> c(D);
+template<typename T>
+using etl_dyn_vector = etl::dyn_vector<T>;
 
-    measure("etl_add_dynamic_complex(" + std::to_string(D) + ")", reference, [&a, &b, &c](){
-        c = a + b + a + b + a + b;
-    }, a, b);
-}
+template<typename T>
+using blaze_dyn_vector = blaze::DynamicVector<T>;
 
 } //end of anonymous namespace
 
 int main(){
-    bench_blaze_add_static<8192>("0us");
-    bench_etl_add_static<8192>("0us");
+    std::cout << "| Name                          | Blaze     |  ETL      |" << std::endl;
+    std::cout << "---------------------------------------------------------" << std::endl;
 
-    bench_blaze_add_dynamic<65536>("4.8ms");
-    bench_etl_add_dynamic<65536>("4.9ms");
+    bench_static<add_static, blaze_static_vector, etl_static_vector, 8192>("static_add");
+    bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add");
+    bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add");
+    bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add");
+    bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add_complex");
+    bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add_complex");
+    bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add_complex");
 
-    bench_blaze_add_dynamic<2*65536>("4.8ms");
-    bench_etl_add_dynamic<2*65536>("4.9ms");
-
-    bench_blaze_add_dynamic_complex<65536>("8.2ms");
-    bench_etl_add_dynamic_complex<65536>("53ms");
-
-    bench_blaze_add_dynamic_complex<2*65536>("8.2ms");
-    bench_etl_add_dynamic_complex<2*65536>("53ms");
+    std::cout << "---------------------------------------------------------" << std::endl;
 
     return 0;
 }
