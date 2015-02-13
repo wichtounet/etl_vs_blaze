@@ -103,6 +103,14 @@ struct add_complex {
     }
 };
 
+template<template<typename> class T, std::size_t D>
+struct mix {
+    static auto get(){
+        T<double> a(D), b(D), c(D);
+        return measure_only([&a, &b, &c](){c = a + a * 5.9 + a + b - b / 2.3 - a + b * 1.1;}, a, b);
+    }
+};
+
 std::string format(std::string value, std::size_t max){
     return value + (value.size() < max ? std::string(std::max(0UL, max - value.size()), ' ') : "");
 }
@@ -150,6 +158,9 @@ int main(){
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add_complex");
+    bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_mix");
+    bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_mix");
+    bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_mix");
 
     std::cout << "---------------------------------------------------------" << std::endl;
 
