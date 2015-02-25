@@ -13,7 +13,20 @@ typedef std::chrono::microseconds microseconds;
 
 namespace {
 
-template<typename T>
+template<typename T, std::enable_if_t<std::is_same<T, blaze::DynamicMatrix<double>>::value, int> = 42>
+void randomize_double(T& container){
+    static std::default_random_engine rand_engine(std::time(nullptr));
+    static std::uniform_real_distribution<double> real_distribution(-1000.0, 1000.0);
+    static auto generator = std::bind(real_distribution, rand_engine);
+
+    for(std::size_t i=0UL; i<container.rows(); ++i ) {
+        for(std::size_t j=0UL; j<container.columns(); ++j ) {
+            container(i,j) = generator();
+        }
+    }
+}
+
+template<typename T, std::enable_if_t<!std::is_same<T, blaze::DynamicMatrix<double>>::value, int> = 42>
 void randomize_double(T& container){
     static std::default_random_engine rand_engine(std::time(nullptr));
     static std::uniform_real_distribution<double> real_distribution(-1000.0, 1000.0);
@@ -111,6 +124,14 @@ struct mix {
     }
 };
 
+template<template<typename> class T, std::size_t D1, std::size_t D2>
+struct mix_matrix {
+    static auto get(){
+        T<double> a(D1, D2), b(D1, D2), c(D1, D2);
+        return measure_only([&a, &b, &c](){c = a + a * 5.9 + a + b - b / 2.3 - a + b * 1.1;}, a, b);
+    }
+};
+
 std::string format(std::string value, std::size_t max){
     return value + (value.size() < max ? std::string(std::max(0UL, max - value.size()), ' ') : "");
 }
@@ -133,6 +154,15 @@ void bench_dyn(const std::string& title){
     std::cout << std::endl;
 }
 
+template<template<template<typename> class, std::size_t, std::size_t> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2>
+void bench_dyn(const std::string& title){
+    std::cout << "| ";
+    std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2), 29) << " | ";
+    std::cout << format(duration_str(T<B,D1,D2>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<E,D1,D2>::get()), 9) << " | ";
+    std::cout << std::endl;
+}
+
 template<typename T, std::size_t D>
 using etl_static_vector = etl::fast_vector<T, D>;
 
@@ -144,6 +174,12 @@ using etl_dyn_vector = etl::dyn_vector<T>;
 
 template<typename T>
 using blaze_dyn_vector = blaze::DynamicVector<T>;
+
+template<typename T>
+using etl_dyn_matrix = etl::dyn_matrix<T>;
+
+template<typename T>
+using blaze_dyn_matrix = blaze::DynamicMatrix<T>;
 
 } //end of anonymous namespace
 
@@ -161,6 +197,9 @@ int main(){
     bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_mix");
     bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_mix");
     bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_mix");
+    bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 256, 256>("dynamic_mix_matrix");
+    bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 512, 512>("dynamic_mix_matrix");
+    bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 578, 769>("dynamic_mix_matrix");
 
     std::cout << "---------------------------------------------------------" << std::endl;
 
