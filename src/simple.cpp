@@ -6,6 +6,7 @@
 #include <blaze/Math.h>
 
 #include "etl/etl.hpp"
+#include "etl/multiplication.hpp"
 
 typedef std::chrono::high_resolution_clock timer_clock;
 typedef std::chrono::milliseconds milliseconds;
@@ -132,6 +133,22 @@ struct mix_matrix {
     }
 };
 
+template<template<typename> class T, std::size_t D1, std::size_t D2, std::size_t D3, typename Enable = void>
+struct mmul {
+    static auto get(){
+        T<double> a(D1, D2), b(D2, D3), c(D1, D3);
+        return measure_only([&a, &b, &c](){etl::mmul(a, b, c);}, a, b);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2, std::size_t D3>
+struct mmul<T, D1, D2, D3, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+    static auto get(){
+        T<double> a(D1, D2), b(D2, D3), c(D1, D3);
+        return measure_only([&a, &b, &c](){c = a * b;}, a, b);
+    }
+};
+
 std::string format(std::string value, std::size_t max){
     return value + (value.size() < max ? std::string(std::max(0UL, max - value.size()), ' ') : "");
 }
@@ -160,6 +177,15 @@ void bench_dyn(const std::string& title){
     std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2), 29) << " | ";
     std::cout << format(duration_str(T<B,D1,D2>::get()), 9) << " | ";
     std::cout << format(duration_str(T<E,D1,D2>::get()), 9) << " | ";
+    std::cout << std::endl;
+}
+
+template<template<template<typename> class, std::size_t, std::size_t, std::size_t, typename = void> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2, std::size_t D3>
+void bench_dyn(const std::string& title){
+    std::cout << "| ";
+    std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2) + "x" + std::to_string(D3), 29) << " | ";
+    std::cout << format(duration_str(T<B,D1,D2,D3>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<E,D1,D2,D3>::get()), 9) << " | ";
     std::cout << std::endl;
 }
 
@@ -200,6 +226,12 @@ int main(){
     bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 256, 256>("dynamic_mix_matrix");
     bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 512, 512>("dynamic_mix_matrix");
     bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 578, 769>("dynamic_mix_matrix");
+    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 128,32,64>("dynamic_mmul");
+    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 128,128,128>("dynamic_mmul");
+    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 256,128,256>("dynamic_mmul");
+    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 256,256,256>("dynamic_mmul");
+    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 300,200,400>("dynamic_mmul");
+    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 512,512,512>("dynamic_mmul");
 
     std::cout << "---------------------------------------------------------" << std::endl;
 
