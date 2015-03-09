@@ -5,7 +5,8 @@ default: release
 include make-utils/flags.mk
 include make-utils/cpp-utils.mk
 
-CXX_FLAGS += -Ietl/include -stdlib=libc++
+CXX_FLAGS += -Ietl/include -Ietl/lib/include -stdlib=libc++
+#LD_FLAGS += -lcblas -lblas
 
 $(eval $(call auto_folder_compile,src))
 $(eval $(call auto_add_executable,bench))
