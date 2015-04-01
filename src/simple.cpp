@@ -38,10 +38,7 @@ void randomize_double(T& container){
     }
 }
 
-template<typename T1>
-void b_randomize(T1& container){
-    randomize_double(container);
-}
+void b_randomize(){}
 
 template<typename T1, typename... TT>
 void b_randomize(T1& container, TT&... containers){
@@ -106,6 +103,22 @@ struct add_dynamic {
     static auto get(){
         T<double> a(D), b(D), c(D);
         return measure_only([&a, &b, &c](){c = a + b;}, a, b);
+    }
+};
+
+template<template<typename, std::size_t> class T, std::size_t D>
+struct scale_static {
+    static auto get(){
+        T<double, D> c;
+        return measure_only([&c](){c = 3.3;});
+    }
+};
+
+template<template<typename> class T, std::size_t D>
+struct scale_dynamic {
+    static auto get(){
+        T<double> c(D);
+        return measure_only([&c](){c *= 3.3;});
     }
 };
 
@@ -217,6 +230,11 @@ int main(){
     bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add");
     bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add");
     bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add");
+    bench_static<scale_static, blaze_static_vector, etl_static_vector, 8192>("static_scale");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 1 * 1024 * 1024>("dynamic_scale");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 2 * 1024 * 1024>("dynamic_scale");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 4 * 1024 * 1024>("dynamic_scale");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 8 * 1024 * 1024>("dynamic_scale");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add_complex");
