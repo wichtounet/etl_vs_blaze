@@ -122,6 +122,22 @@ struct scale_dynamic {
     }
 };
 
+template<template<typename> class T, std::size_t D, typename Enable = void>
+struct dot {
+    static auto get(){
+        T<double> a(D), b(D), c(D);
+        return measure_only([&a, &b, &c](){c *= etl::dot(a, b);}, a, b);
+    }
+};
+
+template<template<typename> class T, std::size_t D>
+struct dot<T, D, std::enable_if_t<std::is_same<T<double>, blaze::DynamicVector<double>>::value>> {
+    static auto get(){
+        T<double> a(D), b(D), c(D);
+        return measure_only([&a, &b, &c](){c *= (a,b);}, a, b);
+    }
+};
+
 template<template<typename> class T, std::size_t D>
 struct add_complex {
     static auto get(){
@@ -184,6 +200,15 @@ void bench_dyn(const std::string& title){
     std::cout << std::endl;
 }
 
+template<template<template<typename> class, std::size_t, typename = void> class T, template<typename> class B, template<typename> class E, std::size_t D>
+void bench_dyn(const std::string& title){
+    std::cout << "| ";
+    std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
+    std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
+    std::cout << std::endl;
+}
+
 template<template<template<typename> class, std::size_t, std::size_t> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2>
 void bench_dyn(const std::string& title){
     std::cout << "| ";
@@ -235,6 +260,7 @@ int main(){
     bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 2 * 1024 * 1024>("dynamic_scale");
     bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 4 * 1024 * 1024>("dynamic_scale");
     bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 8 * 1024 * 1024>("dynamic_scale");
+    bench_dyn<dot, blaze_dyn_vector, etl_dyn_vector, 1024 * 1024>("dot");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add_complex");
