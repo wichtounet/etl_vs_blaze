@@ -5,11 +5,12 @@ default: release
 include make-utils/flags.mk
 include make-utils/cpp-utils.mk
 
+CXX_FLAGS += -Ietl/include -Ietl/lib/include
+#LD_FLAGS += -lcblas -lblas
+
 ifneq (,$(findstring clang,$(CXX)))
 CXX_FLAGS += -stdlib=libc++
 endif
-
-CXX_FLAGS += -Ietl/lib/include -Ietl/include
 
 $(eval $(call auto_folder_compile,src))
 $(eval $(call auto_add_executable,bench))
