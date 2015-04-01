@@ -6,10 +6,14 @@ include make-utils/flags.mk
 include make-utils/cpp-utils.mk
 
 CXX_FLAGS += -Ietl/include -Ietl/lib/include
-#LD_FLAGS += -lcblas -lblas
 
 ifneq (,$(findstring clang,$(CXX)))
 CXX_FLAGS += -stdlib=libc++
+endif
+
+ifneq (,$(ETL_BLAS))
+CXX_FLAGS += -DETL_BLAS_MODE $(shell pkg-config --cflags cblas)
+LD_FLAGS += $(shell pkg-config --libs cblas)
 endif
 
 $(eval $(call auto_folder_compile,src))
