@@ -6,7 +6,6 @@
 #include <blaze/Math.h>
 
 #include "etl/etl.hpp"
-#include "etl/multiplication.hpp"
 
 typedef std::chrono::high_resolution_clock timer_clock;
 typedef std::chrono::milliseconds milliseconds;
@@ -162,64 +161,32 @@ struct mix_matrix {
     }
 };
 
-template<template<typename> class T, std::size_t D, typename Enable = void>
-struct smart_1 {
-    static auto get(){
-        T<double> A(D, D), B(D, D), C(D, D), R(D, D);
-        return measure_only([&A, &B, &C, &R](){R = etl::mmul(A, B + C);}, A, B, C);
-    }
-};
-
 template<template<typename> class T, std::size_t D>
-struct smart_1<T, D, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+struct smart_1 {
     static auto get(){
         T<double> A(D, D), B(D, D), C(D, D), R(D, D);
         return measure_only([&A, &B, &C, &R](){R = A * (B + C);}, A, B, C);
     }
 };
 
-template<template<typename> class T, std::size_t D, typename Enable = void>
-struct smart_2 {
-    static auto get(){
-        T<double> A(D, D), B(D, D), C(D, D), R(D, D);
-        return measure_only([&A, &B, &C, &R](){R = etl::mmul(A, etl::mmul(B, C));}, A, B, C);
-    }
-};
-
 template<template<typename> class T, std::size_t D>
-struct smart_2<T, D, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+struct smart_2 {
     static auto get(){
         T<double> A(D, D), B(D, D), C(D, D), R(D, D);
         return measure_only([&A, &B, &C, &R](){R = A * (B * C);}, A, B, C);
     }
 };
 
-template<template<typename> class T, std::size_t D, typename Enable = void>
-struct smart_3 {
-    static auto get(){
-        T<double> A(D, D), B(D, D), C(D, D), DD(D, D), R(D, D);
-        return measure_only([&A, &B, &C, &DD, &R](){R = etl::mmul(A + B, C - DD);}, A, B, C);
-    }
-};
-
 template<template<typename> class T, std::size_t D>
-struct smart_3<T, D, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+struct smart_3 {
     static auto get(){
         T<double> A(D, D), B(D, D), C(D, D), DD(D, D), R(D, D);
         return measure_only([&A, &B, &C, &DD, &R](){R = (A + B) * (C - DD);}, A, B, C, DD);
     }
 };
 
-template<template<typename> class T, std::size_t D1, std::size_t D2, std::size_t D3, typename Enable = void>
-struct mmul {
-    static auto get(){
-        T<double> a(D1, D2), b(D2, D3), c(D1, D3);
-        return measure_only([&a, &b, &c](){etl::mmul(a, b, c);}, a, b);
-    }
-};
-
 template<template<typename> class T, std::size_t D1, std::size_t D2, std::size_t D3>
-struct mmul<T, D1, D2, D3, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+struct mmul {
     static auto get(){
         T<double> a(D1, D2), b(D2, D3), c(D1, D3);
         return measure_only([&a, &b, &c](){c = a * b;}, a, b);
@@ -265,7 +232,7 @@ void bench_dyn(const std::string& title){
     std::cout << std::endl;
 }
 
-template<template<template<typename> class, std::size_t, std::size_t, std::size_t, typename = void> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2, std::size_t D3>
+template<template<template<typename> class, std::size_t, std::size_t, std::size_t, typename...> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2, std::size_t D3>
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2) + "x" + std::to_string(D3), 29) << " | ";
