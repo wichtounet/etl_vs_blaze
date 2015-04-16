@@ -11,6 +11,10 @@ ifneq (,$(findstring clang,$(CXX)))
 CXX_FLAGS += -stdlib=libc++
 endif
 
+# Enable vectorization
+CXX_FLAGS += -DETL_VECTORIZE
+
+# Enable BLAS on demand
 ifneq (,$(ETL_BLAS))
 CXX_FLAGS += -DETL_BLAS_MODE $(shell pkg-config --cflags cblas)
 LD_FLAGS += $(shell pkg-config --libs cblas)
