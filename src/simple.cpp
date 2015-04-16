@@ -5,14 +5,50 @@
 
 #include <blaze/Math.h>
 
+#include <eigen3/Eigen/Dense>
+
 #include "etl/etl.hpp"
 
-typedef std::chrono::high_resolution_clock timer_clock;
-typedef std::chrono::milliseconds milliseconds;
-typedef std::chrono::microseconds microseconds;
 namespace {
 
-template<typename T, std::enable_if_t<std::is_same<T, blaze::DynamicMatrix<double>>::value, int> = 42>
+using timer_clock = std::chrono::high_resolution_clock;
+using milliseconds = std::chrono::milliseconds;
+using microseconds = std::chrono::microseconds;
+
+template<typename T, std::size_t D>
+using etl_static_vector = etl::fast_vector<T, D>;
+
+template<typename T, std::size_t D>
+using blaze_static_vector = blaze::StaticVector<T, D>;
+
+template<typename T>
+using etl_dyn_vector = etl::dyn_vector<T>;
+
+template<typename T>
+using blaze_dyn_vector = blaze::DynamicVector<T>;
+
+template<typename T>
+using etl_dyn_matrix = etl::dyn_matrix<T>;
+
+template<typename T>
+using blaze_dyn_matrix = blaze::DynamicMatrix<T>;
+
+template<typename T>
+using eigen_dyn_vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+
+template<typename T>
+using eigen_dyn_matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+
+//template<typename _Scalar, int _Rows, int _Cols, int _Options, int _MaxRows, int _MaxCols>
+//class Eigen::Matrix< _Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols >
+
+template<template<typename,int,int,int,int,int> class TT, typename T>
+struct is_eigen : std::false_type { };
+
+template<template<typename,int,int,int,int,int> class TT, typename S, int I1,int I2,int I3,int I4,int I5>
+struct is_eigen<TT, TT<S,I1,I2,I3,I4,I5>> : std::true_type { };
+
+template<typename T, typename std::enable_if<std::is_same<T, blaze::DynamicMatrix<double>>::value, int>::type = 42>
 void randomize_double(T& container){
     static std::default_random_engine rand_engine(std::time(nullptr));
     static std::uniform_real_distribution<double> real_distribution(-1000.0, 1000.0);
@@ -25,7 +61,31 @@ void randomize_double(T& container){
     }
 }
 
-template<typename T, std::enable_if_t<!std::is_same<T, blaze::DynamicMatrix<double>>::value, int> = 42>
+template<typename T, typename std::enable_if<std::is_same<T, blaze_dyn_vector<double>>::value, int>::type = 42>
+void randomize_double(T& container){
+    static std::default_random_engine rand_engine(std::time(nullptr));
+    static std::uniform_real_distribution<double> real_distribution(-1000.0, 1000.0);
+    static auto generator = std::bind(real_distribution, rand_engine);
+
+    for(auto& v : container){
+        v = generator();
+    }
+}
+
+template<typename T, typename std::enable_if<is_eigen<Eigen::Matrix, T>::value, int>::type = 42>
+void randomize_double(T& container){
+    static std::default_random_engine rand_engine(std::time(nullptr));
+    static std::uniform_real_distribution<double> real_distribution(-1000.0, 1000.0);
+    static auto generator = std::bind(real_distribution, rand_engine);
+
+    for(long i=0; i<container.rows(); ++i ) {
+        for(long j=0; j<container.cols(); ++j ) {
+            container(i,j) = generator();
+        }
+    }
+}
+
+template<typename T, typename std::enable_if<etl::is_etl_expr<T>::value, int>::type = 42>
 void randomize_double(T& container){
     static std::default_random_engine rand_engine(std::time(nullptr));
     static std::uniform_real_distribution<double> real_distribution(-1000.0, 1000.0);
@@ -137,6 +197,14 @@ struct dot<T, D, std::enable_if_t<std::is_same<T<double>, blaze::DynamicVector<d
 };
 
 template<template<typename> class T, std::size_t D>
+struct dot<T, D, std::enable_if_t<std::is_same<T<double>, eigen_dyn_vector<double>>::value>> {
+    static auto get(){
+        T<double> a(D), b(D), c(D);
+        return measure_only([&a, &b, &c](){c *= a.dot(b);}, a, b);
+    }
+};
+
+template<template<typename> class T, std::size_t D>
 struct add_complex {
     static auto get(){
         T<double> a(D), b(D), c(D);
@@ -173,6 +241,14 @@ struct transpose <T, D1, D2, std::enable_if_t<std::is_same<T<double>, blaze::Dyn
     static auto get(){
         T<double> A(D1, D2), R(D2, D1);
         return measure_only([&](){R = trans(A);}, A);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2>
+struct transpose <T, D1, D2, std::enable_if_t<is_eigen<Eigen::Matrix,T<double>>::value>> {
+    static auto get(){
+        T<double> A(D1, D2), R(D2, D1);
+        return measure_only([&](){R = A.transpose();}, A);
     }
 };
 
@@ -217,110 +293,90 @@ void bench_static(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
     std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
+    std::cout << format("", 9) << " | ";
     std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
     std::cout << std::endl;
 }
 
-template<template<template<typename> class, std::size_t> class T, template<typename> class B, template<typename> class E, std::size_t D>
+template<template<template<typename> class, std::size_t, typename...> class T, template<typename> class B, template<typename> class Eg, template<typename> class E, std::size_t D>
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
     std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<Eg,D>::get()), 9) << " | ";
     std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
     std::cout << std::endl;
 }
 
-template<template<template<typename> class, std::size_t, typename = void> class T, template<typename> class B, template<typename> class E, std::size_t D>
-void bench_dyn(const std::string& title){
-    std::cout << "| ";
-    std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
-    std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
-    std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
-    std::cout << std::endl;
-}
-
-template<template<template<typename> class, std::size_t, std::size_t, typename...> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2>
+template<template<template<typename> class, std::size_t, std::size_t, typename...> class T, template<typename> class B, template<typename> class Eg, template<typename> class E, std::size_t D1, std::size_t D2>
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2), 29) << " | ";
     std::cout << format(duration_str(T<B,D1,D2>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<Eg,D1,D2>::get()), 9) << " | ";
     std::cout << format(duration_str(T<E,D1,D2>::get()), 9) << " | ";
     std::cout << std::endl;
 }
 
-template<template<template<typename> class, std::size_t, std::size_t, std::size_t, typename...> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2, std::size_t D3>
+template<template<template<typename> class, std::size_t, std::size_t, std::size_t, typename...> class T, template<typename> class B, template<typename> class Eg, template<typename> class E, std::size_t D1, std::size_t D2, std::size_t D3>
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2) + "x" + std::to_string(D3), 29) << " | ";
     std::cout << format(duration_str(T<B,D1,D2,D3>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<Eg,D1,D2,D3>::get()), 9) << " | ";
     std::cout << format(duration_str(T<E,D1,D2,D3>::get()), 9) << " | ";
     std::cout << std::endl;
 }
 
-template<typename T, std::size_t D>
-using etl_static_vector = etl::fast_vector<T, D>;
-
-template<typename T, std::size_t D>
-using blaze_static_vector = blaze::StaticVector<T, D>;
-
-template<typename T>
-using etl_dyn_vector = etl::dyn_vector<T>;
-
-template<typename T>
-using blaze_dyn_vector = blaze::DynamicVector<T>;
-
-template<typename T>
-using etl_dyn_matrix = etl::dyn_matrix<T>;
-
-template<typename T>
-using blaze_dyn_matrix = blaze::DynamicMatrix<T>;
-
 } //end of anonymous namespace
 
 int main(){
-    std::cout << "| Name                          | Blaze     |  ETL      |" << std::endl;
-    std::cout << "---------------------------------------------------------" << std::endl;
+    std::cout << "| Name                          | Blaze     | Eigen     |  ETL      |" << std::endl;
+    std::cout << "---------------------------------------------------------------------" << std::endl;
 
     //TODO Add in place transpose to the benchmark
 
-    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 64, 64>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 64, 128>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 128, 64>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 128, 128>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 256, 256>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 512, 512>("R = A'");
-    bench_dyn<smart_1, blaze_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B + C)");
-    bench_dyn<smart_1, blaze_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B + C)");
-    bench_dyn<smart_2, blaze_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B * C)");
-    bench_dyn<smart_2, blaze_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B * C)");
-    bench_dyn<smart_3, blaze_dyn_matrix, etl_dyn_matrix, 64>("R = (A + B) * (C - D)");
-    bench_dyn<smart_3, blaze_dyn_matrix, etl_dyn_matrix, 128>("R = (A + B) * (C - D)");
-    bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b");
-    bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b");
-    bench_dyn<add_dynamic, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b");
-    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 1 * 1024 * 1024>("r *= 3.3");
-    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 2 * 1024 * 1024>("r *= 3.3");
-    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 4 * 1024 * 1024>("r *= 3.3");
-    bench_dyn<scale_dynamic, blaze_dyn_vector, etl_dyn_vector, 8 * 1024 * 1024>("r *= 3.3");
-    bench_dyn<dot, blaze_dyn_vector, etl_dyn_vector, 1024 * 1024>("dot");
-    bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add_complex");
-    bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add_complex");
-    bench_dyn<add_complex, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add_complex");
-    bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_mix");
-    bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_mix");
-    bench_dyn<mix, blaze_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_mix");
-    bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 256, 256>("dynamic_mix_matrix");
-    bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 512, 512>("dynamic_mix_matrix");
-    bench_dyn<mix_matrix, blaze_dyn_matrix, etl_dyn_matrix, 578, 769>("dynamic_mix_matrix");
-    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 128,32,64>("dynamic_mmul");
-    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 128,128,128>("dynamic_mmul");
-    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 256,128,256>("dynamic_mmul");
-    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 256,256,256>("dynamic_mmul");
-    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 300,200,400>("dynamic_mmul");
-    bench_dyn<mmul, blaze_dyn_matrix, etl_dyn_matrix, 512,512,512>("dynamic_mmul");
+    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 64>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 128>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 64>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 128>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 256>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("R = A'");
+    bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 128 * 1024>("dot");
+    bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 256 * 1024>("dot");
+    bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 512 * 1024>("dot");
+    bench_dyn<smart_1, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B + C)");
+    bench_dyn<smart_1, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B + C)");
+    bench_dyn<smart_2, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B * C)");
+    bench_dyn<smart_2, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B * C)");
+    bench_dyn<smart_3, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = (A + B) * (C - D)");
+    bench_dyn<smart_3, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = (A + B) * (C - D)");
 
-    bench_static<add_static, blaze_static_vector, etl_static_vector, 8192>("static_add");
-    bench_static<scale_static, blaze_static_vector, etl_static_vector, 8192>("static_scale");
+    bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b");
+    bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b");
+    bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 1024 * 1024>("r *= 3.3");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 1024 * 1024>("r *= 3.3");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 1024 * 1024>("r *= 3.3");
+    bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 8 * 1024 * 1024>("r *= 3.3");
+    bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128,32,64>("C = A * B");
+    bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128,128,128>("C = A * B");
+    bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256,128,256>("C = A * B");
+    bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256,256,256>("C = A * B");
+    bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 300,200,400>("C = A * B");
+    bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512,512,512>("C = A * B");
+    bench_dyn<add_complex, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add_complex");
+    bench_dyn<add_complex, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add_complex");
+    bench_dyn<add_complex, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add_complex");
+    bench_dyn<mix, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_mix");
+    bench_dyn<mix, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_mix");
+    bench_dyn<mix, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_mix");
+    bench_dyn<mix_matrix, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 256>("dynamic_mix_matrix");
+    bench_dyn<mix_matrix, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("dynamic_mix_matrix");
+    bench_dyn<mix_matrix, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 578, 769>("dynamic_mix_matrix");
+
+    //bench_static<add_static, blaze_static_vector, etl_static_vector, 8192>("static_add");
+    //bench_static<scale_static, blaze_static_vector, etl_static_vector, 8192>("static_scale");
 
     std::cout << "---------------------------------------------------------" << std::endl;
 
