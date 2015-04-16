@@ -10,7 +10,6 @@
 typedef std::chrono::high_resolution_clock timer_clock;
 typedef std::chrono::milliseconds milliseconds;
 typedef std::chrono::microseconds microseconds;
-
 namespace {
 
 template<typename T, std::enable_if_t<std::is_same<T, blaze::DynamicMatrix<double>>::value, int> = 42>
@@ -157,7 +156,23 @@ template<template<typename> class T, std::size_t D1, std::size_t D2>
 struct mix_matrix {
     static auto get(){
         T<double> a(D1, D2), b(D1, D2), c(D1, D2);
-        return measure_only([&a, &b, &c](){c = a + a * 5.9 + a + b - b / 2.3 - a + b * 1.1;}, a, b);
+        return measure_only([&](){c = a + a * 5.9 + a + b - b / 2.3 - a + b * 1.1;}, a, b);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2, typename Enable = void>
+struct transpose {
+    static auto get(){
+        T<double> A(D1, D2), R(D2, D1);
+        return measure_only([&](){R = etl::transpose(A);}, A);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2>
+struct transpose <T, D1, D2, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+    static auto get(){
+        T<double> A(D1, D2), R(D2, D1);
+        return measure_only([&](){R = trans(A);}, A);
     }
 };
 
@@ -219,11 +234,12 @@ template<template<template<typename> class, std::size_t, typename = void> class 
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
-    std::cout << format(duration_str(T<B,D>::get()), 9) << " | "; std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
+    std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
     std::cout << std::endl;
 }
 
-template<template<template<typename> class, std::size_t, std::size_t> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2>
+template<template<template<typename> class, std::size_t, std::size_t, typename...> class T, template<typename> class B, template<typename> class E, std::size_t D1, std::size_t D2>
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2), 29) << " | ";
@@ -265,6 +281,14 @@ int main(){
     std::cout << "| Name                          | Blaze     |  ETL      |" << std::endl;
     std::cout << "---------------------------------------------------------" << std::endl;
 
+    //TODO Add in place transpose to the benchmark
+
+    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 64, 64>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 64, 128>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 128, 64>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 128, 128>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 256, 256>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, etl_dyn_matrix, 512, 512>("R = A'");
     bench_dyn<smart_1, blaze_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B + C)");
     bench_dyn<smart_1, blaze_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B + C)");
     bench_dyn<smart_2, blaze_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B * C)");
