@@ -284,6 +284,30 @@ struct mmul {
     }
 };
 
+template<template<typename> class T, std::size_t D1, std::size_t D2, std::size_t D3, typename Enable = void>
+struct mmul_t {
+    static auto get(){
+        T<double> A(D1, D2), B(D3, D2), R(D1, D3);
+        return measure_only([&](){R = A * etl::transpose(B);}, A, B);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2, std::size_t D3>
+struct mmul_t <T, D1, D2, D3, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+    static auto get(){
+        T<double> A(D1, D2), B(D3, D2), R(D1, D3);
+        return measure_only([&](){R = A * trans(B);}, A, B);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2, std::size_t D3>
+struct mmul_t <T, D1, D2, D3, std::enable_if_t<is_eigen<Eigen::Matrix,T<double>>::value>> {
+    static auto get(){
+        T<double> A(D1, D2), B(D3, D2), R(D1, D3);
+        return measure_only([&](){R = A * B.transpose();}, A, B);
+    }
+};
+
 std::string format(std::string value, std::size_t max){
     return value + (value.size() < max ? std::string(std::max(0UL, max - value.size()), ' ') : "");
 }
@@ -351,7 +375,6 @@ int main(){
     bench_dyn<smart_2, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B * C)");
     bench_dyn<smart_3, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = (A + B) * (C - D)");
     bench_dyn<smart_3, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = (A + B) * (C - D)");
-
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b");
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b");
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b");
@@ -365,6 +388,12 @@ int main(){
     bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256,256,256>("C = A * B");
     bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 300,200,400>("C = A * B");
     bench_dyn<mmul, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512,512,512>("C = A * B");
+    bench_dyn<mmul_t, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128,32,64>("C = A * B'");
+    bench_dyn<mmul_t, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128,128,128>("C = A * B'");
+    bench_dyn<mmul_t, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256,128,256>("C = A * B'");
+    bench_dyn<mmul_t, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256,256,256>("C = A * B'");
+    bench_dyn<mmul_t, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 300,200,400>("C = A * B'");
+    bench_dyn<mmul_t, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512,512,512>("C = A * B'");
     bench_dyn<add_complex, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("dynamic_add_complex");
     bench_dyn<add_complex, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("dynamic_add_complex");
