@@ -343,13 +343,34 @@ void bench_static(const std::string& title){
     std::cout << std::endl;
 }
 
+void display_final(std::size_t d, std::size_t min, std::size_t max){
+    if(d == min){
+        std::cout << "\033[0;32m";
+    } else if(d == max){
+        std::cout << "\033[0;31m";
+    }
+
+    std::cout << format(duration_str(d), 9);
+
+    std::cout << "" << '\033' << "[" << 0 << ";" << 30 << 47 << "m";
+
+    std::cout << " | ";
+}
+
+void display(std::size_t d1, std::size_t d2, std::size_t d3){
+    auto max = std::max(d1, std::max(d2, d3));
+    auto min = std::min(d1, std::min(d2, d3));
+
+    display_final(d1, min, max);
+    display_final(d2, min, max);
+    display_final(d3, min, max);
+}
+
 template<template<template<typename> class, std::size_t, typename...> class T, template<typename> class B, template<typename> class Eg, template<typename> class E, std::size_t D>
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
-    std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
-    std::cout << format(duration_str(T<Eg,D>::get()), 9) << " | ";
-    std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
+    display(T<B,D>::get(), T<Eg,D>::get(), T<E,D>::get());
     std::cout << std::endl;
 }
 
@@ -357,9 +378,7 @@ template<template<template<typename> class, std::size_t, std::size_t, typename..
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2), 29) << " | ";
-    std::cout << format(duration_str(T<B,D1,D2>::get()), 9) << " | ";
-    std::cout << format(duration_str(T<Eg,D1,D2>::get()), 9) << " | ";
-    std::cout << format(duration_str(T<E,D1,D2>::get()), 9) << " | ";
+    display(T<B,D1,D2>::get(), T<Eg,D1,D2>::get(), T<E,D1,D2>::get());
     std::cout << std::endl;
 }
 
@@ -367,9 +386,7 @@ template<template<template<typename> class, std::size_t, std::size_t, std::size_
 void bench_dyn(const std::string& title){
     std::cout << "| ";
     std::cout << format(title + ":" + std::to_string(D1) + "x" + std::to_string(D2) + "x" + std::to_string(D3), 29) << " | ";
-    std::cout << format(duration_str(T<B,D1,D2,D3>::get()), 9) << " | ";
-    std::cout << format(duration_str(T<Eg,D1,D2,D3>::get()), 9) << " | ";
-    std::cout << format(duration_str(T<E,D1,D2,D3>::get()), 9) << " | ";
+    display(T<B,D1,D2,D3>::get(), T<Eg,D1,D2,D3>::get(), T<E,D1,D2,D3>::get());
     std::cout << std::endl;
 }
 
@@ -440,7 +457,7 @@ int main(){
     //bench_static<add_static, blaze_static_vector, etl_static_vector, 8192>("static_add");
     //bench_static<scale_static, blaze_static_vector, etl_static_vector, 8192>("static_scale");
 
-    std::cout << "---------------------------------------------------------" << std::endl;
+    std::cout << "------------------------------------------------------------------" << std::endl;
 
     return 0;
 }
