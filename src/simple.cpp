@@ -39,9 +39,6 @@ using eigen_dyn_vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template<typename T>
 using eigen_dyn_matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
-//template<typename _Scalar, int _Rows, int _Cols, int _Options, int _MaxRows, int _MaxCols>
-//class Eigen::Matrix< _Scalar, _Rows, _Cols, _Options, _MaxRows, _MaxCols >
-
 template<template<typename,int,int,int,int,int> class TT, typename T>
 struct is_eigen : std::false_type { };
 
