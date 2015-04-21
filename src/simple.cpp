@@ -249,6 +249,30 @@ struct transpose <T, D1, D2, std::enable_if_t<is_eigen<Eigen::Matrix,T<double>>:
     }
 };
 
+template<template<typename> class T, std::size_t D1, std::size_t D2, typename Enable = void>
+struct transpose_in {
+    static auto get(){
+        T<double> A(D1, D2);
+        return measure_only([&](){A.transpose_inplace();}, A);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2>
+struct transpose_in <T, D1, D2, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
+    static auto get(){
+        T<double> A(D1, D2);
+        return measure_only([&](){A.transpose();}, A);
+    }
+};
+
+template<template<typename> class T, std::size_t D1, std::size_t D2>
+struct transpose_in <T, D1, D2, std::enable_if_t<is_eigen<Eigen::Matrix,T<double>>::value>> {
+    static auto get(){
+        T<double> A(D1, D2), R(D2, D1);
+        return measure_only([&](){A.transposeInPlace();}, A);
+    }
+};
+
 template<template<typename> class T, std::size_t D>
 struct smart_1 {
     static auto get(){
@@ -355,14 +379,26 @@ int main(){
     std::cout << "| Name                          | Blaze     | Eigen     |  ETL      |" << std::endl;
     std::cout << "---------------------------------------------------------------------" << std::endl;
 
-    //TODO Add in place transpose to the benchmark
+    //Transposition
 
     bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 64>("R = A'");
     bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 128>("R = A'");
     bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 64>("R = A'");
     bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 128>("R = A'");
     bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 256>("R = A'");
+    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 384>("R = A'");
     bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("R = A'");
+
+    //In place transposition
+
+    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 64>("A = A'");
+    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 128>("A = A'");
+    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 64>("A = A'");
+    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 128>("A = A'");
+    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 256>("A = A'");
+    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 384>("A = A'");
+    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("A = A'");
+
     bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 128 * 1024>("dot");
     bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 256 * 1024>("dot");
     bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 512 * 1024>("dot");
