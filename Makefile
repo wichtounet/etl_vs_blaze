@@ -14,10 +14,15 @@ endif
 # Enable vectorization
 CXX_FLAGS += -DETL_VECTORIZE
 
-# Enable BLAS on demand
+# Enable BLAS/MKL on demand
+ifneq (,$(ETL_MKL))
+CXX_FLAGS += -DETL_MKL_MODE $(shell pkg-config --cflags cblas)
+LD_FLAGS += $(shell pkg-config --libs cblas)
+else
 ifneq (,$(ETL_BLAS))
 CXX_FLAGS += -DETL_BLAS_MODE $(shell pkg-config --cflags cblas)
 LD_FLAGS += $(shell pkg-config --libs cblas)
+endif
 endif
 
 $(eval $(call auto_folder_compile,src))
