@@ -115,7 +115,7 @@ std::string duration_str(std::size_t duration_us){
     } else if(duration_us > 1000){
         return clean_duration(std::to_string(duration_us / 1000.0)) + "ms";
     } else {
-        return clean_duration(std::to_string(duration_us)) + "us";
+        return std::to_string(duration_us) + "us";
     }
 }
 
@@ -268,7 +268,7 @@ struct transpose_in <T, D1, D2, std::enable_if_t<std::is_same<T<double>, blaze::
 template<template<typename> class T, std::size_t D1, std::size_t D2>
 struct transpose_in <T, D1, D2, std::enable_if_t<is_eigen<Eigen::Matrix,T<double>>::value>> {
     static auto get(){
-        T<double> A(D1, D2), R(D2, D1);
+        T<double> A(D1, D2);
         return measure_only([&](){A.transposeInPlace();}, A);
     }
 };
