@@ -161,6 +161,22 @@ struct add_dynamic {
     }
 };
 
+template<template<typename> class T, std::size_t D>
+struct add_three {
+    static auto get(){
+        T<double> a(D), b(D), c(D), r(D);
+        return measure_only([&a, &b, &c, &r](){r = a + b + c;}, a, b, c);
+    }
+};
+
+template<template<typename> class T, std::size_t D>
+struct add_four {
+    static auto get(){
+        T<double> a(D), b(D), c(D), d(D), r(D);
+        return measure_only([&a, &b, &c, &d, &r](){r = a + b + c + d;}, a, b, c, d);
+    }
+};
+
 template<template<typename, std::size_t> class T, std::size_t D>
 struct scale_static {
     static auto get(){
@@ -428,6 +444,12 @@ int main(){
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b");
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b");
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b");
+    bench_dyn<add_three, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b + c");
+    bench_dyn<add_three, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b + c");
+    bench_dyn<add_three, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b + c");
+    bench_dyn<add_four, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b + c + d");
+    bench_dyn<add_four, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b + c + d");
+    bench_dyn<add_four, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b + c + d");
     bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 1024 * 1024>("r *= 3.3");
     bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 1024 * 1024>("r *= 3.3");
     bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 1024 * 1024>("r *= 3.3");
