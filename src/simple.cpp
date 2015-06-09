@@ -202,7 +202,7 @@ struct scale_dynamic {
     }
 };
 
-CPM_SECTION_P("dot", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000))
+CPM_SECTION_P("dot", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
     CPM_TWO_PASS_NS("etl",
         [](std::size_t d){ return std::make_tuple(etl_dyn_vector<double>(d), etl_dyn_vector<double>(d), etl_dyn_vector<double>(d)); },
         [](etl_dyn_vector<double>& a, etl_dyn_vector<double>& b, etl_dyn_vector<double>& c){ c *= etl::dot(a, b); }
@@ -216,6 +216,23 @@ CPM_SECTION_P("dot", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3
     CPM_TWO_PASS_NS("eigen",
         [](std::size_t d){ return std::make_tuple(eigen_dyn_vector<double>(d), eigen_dyn_vector<double>(d), eigen_dyn_vector<double>(d)); },
         [](eigen_dyn_vector<double>& a, eigen_dyn_vector<double>& b, eigen_dyn_vector<double>& c){ c *= a.dot(b); }
+        );
+}
+
+CPM_SECTION_P("R = A * (B + C)", NARY_POLICY(VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dyn_matrix<double>(d1,d2), etl_dyn_matrix<double>(d1,d2), etl_dyn_matrix<double>(d1,d2), etl_dyn_matrix<double>(d1,d2)); },
+        [](etl_dyn_matrix<double>& R, etl_dyn_matrix<double>& A, etl_dyn_matrix<double>& B, etl_dyn_matrix<double>& C){ R = A * (B + C); }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(blaze_dyn_matrix<double>(d1,d2), blaze_dyn_matrix<double>(d1,d2), blaze_dyn_matrix<double>(d1,d2), blaze_dyn_matrix<double>(d1,d2)); },
+        [](blaze_dyn_matrix<double>& R, blaze_dyn_matrix<double>& A, blaze_dyn_matrix<double>& B, blaze_dyn_matrix<double>& C){ R = A * (B + C); }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_dyn_matrix<double>(d1,d2), eigen_dyn_matrix<double>(d1,d2), eigen_dyn_matrix<double>(d1,d2), eigen_dyn_matrix<double>(d1,d2)); },
+        [](eigen_dyn_matrix<double>& R, eigen_dyn_matrix<double>& A, eigen_dyn_matrix<double>& B, eigen_dyn_matrix<double>& C){ R = A * (B + C); }
         );
 }
 
@@ -288,14 +305,6 @@ struct transpose_in <T, D1, D2, std::enable_if_t<is_eigen<Eigen::Matrix,T<double
     static auto get(){
         T<double> A(D1, D2);
         return measure_only([&](){A.transposeInPlace();}, A);
-    }
-};
-
-template<template<typename> class T, std::size_t D>
-struct smart_1 {
-    static auto get(){
-        T<double> A(D, D), B(D, D), C(D, D), R(D, D);
-        return measure_only([&A, &B, &C, &R](){R = A * (B + C);}, A, B, C);
     }
 };
 
@@ -434,8 +443,6 @@ int old_main(){
     bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 384>("A = A'");
     bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("A = A'");
 
-    bench_dyn<smart_1, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B + C)");
-    bench_dyn<smart_1, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B + C)");
     bench_dyn<smart_2, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B * C)");
     bench_dyn<smart_2, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B * C)");
     bench_dyn<smart_3, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = (A + B) * (C - D)");
