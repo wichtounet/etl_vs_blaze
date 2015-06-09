@@ -12,7 +12,9 @@ CXX_FLAGS += -stdlib=libc++
 endif
 
 # Enable vectorization
-CXX_FLAGS += -DETL_VECTORIZE
+CXX_FLAGS += -DETL_VECTORIZE_FULL
+
+LD_FLAGS += -pthread
 
 # Enable BLAS/MKL on demand
 ifneq (,$(ETL_MKL))
@@ -25,7 +27,7 @@ LD_FLAGS += $(shell pkg-config --libs cblas)
 endif
 endif
 
-$(eval $(call auto_folder_compile,src))
+$(eval $(call auto_folder_compile,src,-Icpm/include))
 $(eval $(call auto_add_executable,bench))
 
 release: release_bench

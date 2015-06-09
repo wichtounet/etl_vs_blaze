@@ -9,6 +9,15 @@
 
 #include "etl/etl.hpp"
 
+#define CPM_PARALLEL_RANDOMIZE
+#define CPM_FAST_RANDOMIZE
+
+#define CPM_WARMUP 5
+#define CPM_REPEAT 20
+
+#define CPM_BENCHMARK "ETL/Blaze/Eigen Benchmark"
+#include "cpm/cpm.hpp"
+
 namespace {
 
 using timer_clock = std::chrono::high_resolution_clock;
@@ -193,29 +202,22 @@ struct scale_dynamic {
     }
 };
 
-template<template<typename> class T, std::size_t D, typename Enable = void>
-struct dot {
-    static auto get(){
-        T<double> a(D), b(D), c(D);
-        return measure_only([&a, &b, &c](){c *= etl::dot(a, b);}, a, b);
-    }
-};
+CPM_SECTION_P("dot", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d){ return std::make_tuple(etl_dyn_vector<double>(d), etl_dyn_vector<double>(d), etl_dyn_vector<double>(d)); },
+        [](etl_dyn_vector<double>& a, etl_dyn_vector<double>& b, etl_dyn_vector<double>& c){ c *= etl::dot(a, b); }
+        );
 
-template<template<typename> class T, std::size_t D>
-struct dot<T, D, std::enable_if_t<std::is_same<T<double>, blaze::DynamicVector<double>>::value>> {
-    static auto get(){
-        T<double> a(D), b(D), c(D);
-        return measure_only([&a, &b, &c](){c *= (a,b);}, a, b);
-    }
-};
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d){ return std::make_tuple(blaze_dyn_vector<double>(d), blaze_dyn_vector<double>(d), blaze_dyn_vector<double>(d)); },
+        [](blaze_dyn_vector<double>& a, blaze_dyn_vector<double>& b, blaze_dyn_vector<double>& c){ c *= (a, b); }
+        );
 
-template<template<typename> class T, std::size_t D>
-struct dot<T, D, std::enable_if_t<std::is_same<T<double>, eigen_dyn_vector<double>>::value>> {
-    static auto get(){
-        T<double> a(D), b(D), c(D);
-        return measure_only([&a, &b, &c](){c *= a.dot(b);}, a, b);
-    }
-};
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d){ return std::make_tuple(eigen_dyn_vector<double>(d), eigen_dyn_vector<double>(d), eigen_dyn_vector<double>(d)); },
+        [](eigen_dyn_vector<double>& a, eigen_dyn_vector<double>& b, eigen_dyn_vector<double>& c){ c *= a.dot(b); }
+        );
+}
 
 template<template<typename> class T, std::size_t D>
 struct add_complex {
@@ -408,7 +410,7 @@ void bench_dyn(const std::string& title){
 
 } //end of anonymous namespace
 
-int main(){
+int old_main(){
     std::cout << "| Name                          | Blaze     | Eigen     |  ETL      |" << std::endl;
     std::cout << "---------------------------------------------------------------------" << std::endl;
 
@@ -432,9 +434,6 @@ int main(){
     bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 384>("A = A'");
     bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("A = A'");
 
-    bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 128 * 1024>("dot");
-    bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 256 * 1024>("dot");
-    bench_dyn<dot, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 512 * 1024>("dot");
     bench_dyn<smart_1, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B + C)");
     bench_dyn<smart_1, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128>("R = A * (B + C)");
     bench_dyn<smart_2, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64>("R = A * (B * C)");
