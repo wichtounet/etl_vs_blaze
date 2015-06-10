@@ -207,6 +207,40 @@ using etl_dmat = etl_dyn_matrix<double>;
 using blaze_dmat = blaze_dyn_matrix<double>;
 using eigen_dmat = eigen_dyn_matrix<double>;
 
+CPM_SECTION_P("R = A'", NARY_POLICY(VALUES_POLICY(64, 64, 128, 256, 256, 256, 300, 512, 512, 1024, 2048, 2048), VALUES_POLICY(64, 128, 128, 128, 256, 384, 500, 512, 1024, 1024, 1024, 2048)))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dmat(d1,d2), etl_dmat(d2,d1)); },
+        [](etl_dmat& R, etl_dmat& A){ R = etl::transpose(A); }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(blaze_dmat(d1,d2), blaze_dmat(d1,d2)); },
+        [](blaze_dmat& R, blaze_dmat& A){ R = trans(A); }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_dmat(d1,d2), eigen_dmat(d1,d2)); },
+        [](eigen_dmat& R, eigen_dmat& A){ R = A.transpose(); }
+        );
+}
+
+CPM_SECTION_P("R = R'", NARY_POLICY(VALUES_POLICY(64, 64, 128, 256, 256, 256, 300, 512, 512, 1024, 2048, 2048), VALUES_POLICY(64, 128, 128, 128, 256, 384, 500, 512, 1024, 1024, 1024, 2048)))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dmat(d1,d2)); },
+        [](etl_dmat& R){ R.transpose_inplace(); }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(blaze_dmat(d1,d2)); },
+        [](blaze_dmat& R){ R.transpose(); }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_dmat(d1,d2)); },
+        [](eigen_dmat& R){ R.transposeInPlace(); }
+        );
+}
+
 CPM_SECTION_P("R = A * (B + C)", NARY_POLICY(VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)))
     CPM_TWO_PASS_NS("etl",
         [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dmat(d1,d2), etl_dmat(d1,d2), etl_dmat(d1,d2), etl_dmat(d1,d2)); },
@@ -279,54 +313,6 @@ struct mix_matrix {
     static auto get(){
         T<double> a(D1, D2), b(D1, D2), c(D1, D2);
         return measure_only([&](){c = a + a * 5.9 + a + b - b / 2.3 - a + b * 1.1;}, a, b);
-    }
-};
-
-template<template<typename> class T, std::size_t D1, std::size_t D2, typename Enable = void>
-struct transpose {
-    static auto get(){
-        T<double> A(D1, D2), R(D2, D1);
-        return measure_only([&](){R = etl::transpose(A);}, A);
-    }
-};
-
-template<template<typename> class T, std::size_t D1, std::size_t D2>
-struct transpose <T, D1, D2, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
-    static auto get(){
-        T<double> A(D1, D2), R(D2, D1);
-        return measure_only([&](){R = trans(A);}, A);
-    }
-};
-
-template<template<typename> class T, std::size_t D1, std::size_t D2>
-struct transpose <T, D1, D2, std::enable_if_t<is_eigen<Eigen::Matrix,T<double>>::value>> {
-    static auto get(){
-        T<double> A(D1, D2), R(D2, D1);
-        return measure_only([&](){R = A.transpose();}, A);
-    }
-};
-
-template<template<typename> class T, std::size_t D1, std::size_t D2, typename Enable = void>
-struct transpose_in {
-    static auto get(){
-        T<double> A(D1, D2);
-        return measure_only([&](){A.transpose_inplace();}, A);
-    }
-};
-
-template<template<typename> class T, std::size_t D1, std::size_t D2>
-struct transpose_in <T, D1, D2, std::enable_if_t<std::is_same<T<double>, blaze::DynamicMatrix<double>>::value>> {
-    static auto get(){
-        T<double> A(D1, D2);
-        return measure_only([&](){A.transpose();}, A);
-    }
-};
-
-template<template<typename> class T, std::size_t D1, std::size_t D2>
-struct transpose_in <T, D1, D2, std::enable_if_t<is_eigen<Eigen::Matrix,T<double>>::value>> {
-    static auto get(){
-        T<double> A(D1, D2);
-        return measure_only([&](){A.transposeInPlace();}, A);
     }
 };
 
@@ -419,25 +405,7 @@ int old_main(){
     std::cout << "| Name                          | Blaze     | Eigen     |  ETL      |" << std::endl;
     std::cout << "---------------------------------------------------------------------" << std::endl;
 
-    //Transposition
-
-    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 64>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 128>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 64>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 128>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 256>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 384>("R = A'");
-    bench_dyn<transpose, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("R = A'");
-
     //In place transposition
-
-    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 64>("A = A'");
-    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 64, 128>("A = A'");
-    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 64>("A = A'");
-    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 128, 128>("A = A'");
-    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 256>("A = A'");
-    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 384>("A = A'");
-    bench_dyn<transpose_in, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("A = A'");
 
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b");
     bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b");
