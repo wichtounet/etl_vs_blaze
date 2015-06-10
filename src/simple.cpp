@@ -48,6 +48,14 @@ using eigen_dyn_vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 template<typename T>
 using eigen_dyn_matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
+using etl_dvec = etl_dyn_vector<double>;
+using blaze_dvec = blaze_dyn_vector<double>;
+using eigen_dvec = eigen_dyn_vector<double>;
+
+using etl_dmat = etl_dyn_matrix<double>;
+using blaze_dmat = blaze_dyn_matrix<double>;
+using eigen_dmat = eigen_dyn_matrix<double>;
+
 template<template<typename,int,int,int,int,int> class TT, typename T>
 struct is_eigen : std::false_type { };
 
@@ -67,7 +75,7 @@ void randomize_double(T& container){
     }
 }
 
-template<typename T, typename std::enable_if<std::is_same<T, blaze_dyn_vector<double>>::value, int>::type = 42>
+template<typename T, typename std::enable_if<std::is_same<T, blaze_dvec>::value, int>::type = 42>
 void randomize_double(T& container){
     static std::default_random_engine rand_engine(std::time(nullptr));
     static std::uniform_real_distribution<double> real_distribution(-1000.0, 1000.0);
@@ -155,30 +163,6 @@ void measure(const std::string& title, const std::string& reference, Functor&& f
 }
 
 template<template<typename> class T, std::size_t D>
-struct add_dynamic {
-    static auto get(){
-        T<double> a(D), b(D), c(D);
-        return measure_only([&a, &b, &c](){c = a + b;}, a, b);
-    }
-};
-
-template<template<typename> class T, std::size_t D>
-struct add_three {
-    static auto get(){
-        T<double> a(D), b(D), c(D), r(D);
-        return measure_only([&a, &b, &c, &r](){r = a + b + c;}, a, b, c);
-    }
-};
-
-template<template<typename> class T, std::size_t D>
-struct add_four {
-    static auto get(){
-        T<double> a(D), b(D), c(D), d(D), r(D);
-        return measure_only([&a, &b, &c, &d, &r](){r = a + b + c + d;}, a, b, c, d);
-    }
-};
-
-template<template<typename> class T, std::size_t D>
 struct scale_dynamic {
     static auto get(){
         T<double> c(D);
@@ -186,26 +170,56 @@ struct scale_dynamic {
     }
 };
 
-CPM_SECTION_P("dot", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
+CPM_SECTION_P("r = a + b", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
     CPM_TWO_PASS_NS("etl",
-        [](std::size_t d){ return std::make_tuple(etl_dyn_vector<double>(d), etl_dyn_vector<double>(d), etl_dyn_vector<double>(d)); },
-        [](etl_dyn_vector<double>& a, etl_dyn_vector<double>& b, etl_dyn_vector<double>& c){ c *= etl::dot(a, b); }
+        [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d), etl_dvec(d)); },
+        [](etl_dvec& r, etl_dvec& a, etl_dvec& b){ r = a + b; }
         );
 
     CPM_TWO_PASS_NS("blaze",
-        [](std::size_t d){ return std::make_tuple(blaze_dyn_vector<double>(d), blaze_dyn_vector<double>(d), blaze_dyn_vector<double>(d)); },
-        [](blaze_dyn_vector<double>& a, blaze_dyn_vector<double>& b, blaze_dyn_vector<double>& c){ c *= (a, b); }
+        [](std::size_t d){ return std::make_tuple(blaze_dvec(d), blaze_dvec(d), blaze_dvec(d)); },
+        [](blaze_dvec& r, blaze_dvec& a, blaze_dvec& b){ r = a + b; }
         );
 
     CPM_TWO_PASS_NS("eigen",
-        [](std::size_t d){ return std::make_tuple(eigen_dyn_vector<double>(d), eigen_dyn_vector<double>(d), eigen_dyn_vector<double>(d)); },
-        [](eigen_dyn_vector<double>& a, eigen_dyn_vector<double>& b, eigen_dyn_vector<double>& c){ c *= a.dot(b); }
+        [](std::size_t d){ return std::make_tuple(eigen_dvec(d), eigen_dvec(d), eigen_dvec(d)); },
+        [](eigen_dvec& r, eigen_dvec& a, eigen_dvec& b){ r = a + b; }
         );
 }
 
-using etl_dmat = etl_dyn_matrix<double>;
-using blaze_dmat = blaze_dyn_matrix<double>;
-using eigen_dmat = eigen_dyn_matrix<double>;
+CPM_SECTION_P("r = a + b + c", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d), etl_dvec(d), etl_dvec(d)); },
+        [](etl_dvec& r, etl_dvec& a, etl_dvec& b, etl_dvec& c){ r = a + b + c; }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d){ return std::make_tuple(blaze_dvec(d), blaze_dvec(d), blaze_dvec(d), blaze_dvec(d)); },
+        [](blaze_dvec& r, blaze_dvec& a, blaze_dvec& b, blaze_dvec& c){ r = a + b + c; }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d){ return std::make_tuple(eigen_dvec(d), eigen_dvec(d), eigen_dvec(d), eigen_dvec(d)); },
+        [](eigen_dvec& r, eigen_dvec& a, eigen_dvec& b, eigen_dvec& c){ r = a + b + c; }
+        );
+}
+
+CPM_SECTION_P("r = a + b + c + d", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d), etl_dvec(d), etl_dvec(d), etl_dvec(d)); },
+        [](etl_dvec& r, etl_dvec& a, etl_dvec& b, etl_dvec& c, etl_dvec& d){ r = a + b + c + d; }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d){ return std::make_tuple(blaze_dvec(d), blaze_dvec(d), blaze_dvec(d), blaze_dvec(d), blaze_dvec(d)); },
+        [](blaze_dvec& r, blaze_dvec& a, blaze_dvec& b, blaze_dvec& c, blaze_dvec& d){ r = a + b + c + d; }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d){ return std::make_tuple(eigen_dvec(d), eigen_dvec(d), eigen_dvec(d), eigen_dvec(d), eigen_dvec(d)); },
+        [](eigen_dvec& r, eigen_dvec& a, eigen_dvec& b, eigen_dvec& c, eigen_dvec& d){ r = a + b + c + d; }
+        );
+}
 
 CPM_SECTION_P("R = A'", NARY_POLICY(VALUES_POLICY(64, 64, 128, 256, 256, 256, 300, 512, 512, 1024, 2048, 2048), VALUES_POLICY(64, 128, 128, 128, 256, 384, 500, 512, 1024, 1024, 1024, 2048)))
     CPM_TWO_PASS_NS("etl",
@@ -289,6 +303,23 @@ CPM_SECTION_P("R = (A + B) * (C - D)", NARY_POLICY(VALUES_POLICY(100, 200, 300, 
     CPM_TWO_PASS_NS("eigen",
         [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_dmat(d1,d2), eigen_dmat(d1,d2), eigen_dmat(d1,d2), eigen_dmat(d1,d2), eigen_dmat(d1,d2)); },
         [](eigen_dmat& R, eigen_dmat& A, eigen_dmat& B, eigen_dmat& C, eigen_dmat& D){ R = (A + B) * (C - D); }
+        );
+}
+
+CPM_SECTION_P("dot", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d), etl_dvec(d)); },
+        [](etl_dvec& a, etl_dvec& b, etl_dvec& c){ c *= etl::dot(a, b); }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d){ return std::make_tuple(blaze_dvec(d), blaze_dvec(d), blaze_dvec(d)); },
+        [](blaze_dvec& a, blaze_dvec& b, blaze_dvec& c){ c *= (a, b); }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d){ return std::make_tuple(eigen_dvec(d), eigen_dvec(d), eigen_dvec(d)); },
+        [](eigen_dvec& a, eigen_dvec& b, eigen_dvec& c){ c *= a.dot(b); }
         );
 }
 
@@ -407,15 +438,6 @@ int old_main(){
 
     //In place transposition
 
-    bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b");
-    bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b");
-    bench_dyn<add_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b");
-    bench_dyn<add_three, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b + c");
-    bench_dyn<add_three, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b + c");
-    bench_dyn<add_three, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b + c");
-    bench_dyn<add_four, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 32768>("r = a + b + c + d");
-    bench_dyn<add_four, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 32768>("r = a + b + c + d");
-    bench_dyn<add_four, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 32768>("r = a + b + c + d");
     bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 1 * 1024 * 1024>("r *= 3.3");
     bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 2 * 1024 * 1024>("r *= 3.3");
     bench_dyn<scale_dynamic, blaze_dyn_vector, eigen_dyn_vector, etl_dyn_vector, 4 * 1024 * 1024>("r *= 3.3");
