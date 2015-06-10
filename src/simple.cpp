@@ -154,14 +154,6 @@ void measure(const std::string& title, const std::string& reference, Functor&& f
     std::cout << title << " took " << duration_str(measure_only(functor, references...)) << " (reference: " << reference << ")\n";
 }
 
-template<template<typename, std::size_t> class T, std::size_t D>
-struct add_static {
-    static auto get(){
-        T<double, D> a,b,c;
-        return measure_only([&a, &b, &c](){c = a + b;}, a, b);
-    }
-};
-
 template<template<typename> class T, std::size_t D>
 struct add_dynamic {
     static auto get(){
@@ -183,14 +175,6 @@ struct add_four {
     static auto get(){
         T<double> a(D), b(D), c(D), d(D), r(D);
         return measure_only([&a, &b, &c, &d, &r](){r = a + b + c + d;}, a, b, c, d);
-    }
-};
-
-template<template<typename, std::size_t> class T, std::size_t D>
-struct scale_static {
-    static auto get(){
-        T<double, D> c;
-        return measure_only([&c](){c = 3.3;});
     }
 };
 
@@ -257,7 +241,7 @@ CPM_SECTION_P("R = A * (B * C)", NARY_POLICY(VALUES_POLICY(100, 200, 300, 400, 5
         );
 }
 
-CPM_SECTION_P("R = A * (B * C)", NARY_POLICY(VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)))
+CPM_SECTION_P("R = (A + B) * (C - D)", NARY_POLICY(VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), VALUES_POLICY(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)))
     CPM_TWO_PASS_NS("etl",
         [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dmat(d1,d2), etl_dmat(d1,d2), etl_dmat(d1,d2), etl_dmat(d1,d2), etl_dmat(d1,d2)); },
         [](etl_dmat& R, etl_dmat& A, etl_dmat& B, etl_dmat& C, etl_dmat& D){ R = (A + B) * (C - D); }
@@ -382,16 +366,6 @@ std::string format(std::string value, std::size_t max){
     return value + (value.size() < max ? std::string(std::max(0UL, max - value.size()), ' ') : "");
 }
 
-template<template<template<typename, std::size_t> class, std::size_t> class T, template<typename, std::size_t> class B, template<typename, std::size_t> class E, std::size_t D>
-void bench_static(const std::string& title){
-    std::cout << "| ";
-    std::cout << format(title + ":" + std::to_string(D), 29) << " | ";
-    std::cout << format(duration_str(T<B,D>::get()), 9) << " | ";
-    std::cout << format("", 9) << " | ";
-    std::cout << format(duration_str(T<E,D>::get()), 9) << " | ";
-    std::cout << std::endl;
-}
-
 void display_final(std::size_t d, std::size_t min, std::size_t max){
     if(d == min){
         std::cout << "\033[0;32m";
@@ -499,9 +473,6 @@ int old_main(){
     bench_dyn<mix_matrix, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 256, 256>("dynamic_mix_matrix");
     bench_dyn<mix_matrix, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 512, 512>("dynamic_mix_matrix");
     bench_dyn<mix_matrix, blaze_dyn_matrix, eigen_dyn_matrix, etl_dyn_matrix, 578, 769>("dynamic_mix_matrix");
-
-    //bench_static<add_static, blaze_static_vector, etl_static_vector, 8192>("static_add");
-    //bench_static<scale_static, blaze_static_vector, etl_static_vector, 8192>("static_scale");
 
     std::cout << "------------------------------------------------------------------" << std::endl;
 
