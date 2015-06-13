@@ -16,16 +16,18 @@ CXX_FLAGS += -DETL_VECTORIZE_FULL
 
 LD_FLAGS += -pthread
 
-# Enable BLAS/MKL on demand
-ifneq (,$(ETL_MKL))
-CXX_FLAGS += -DETL_MKL_MODE $(shell pkg-config --cflags cblas)
-LD_FLAGS += $(shell pkg-config --libs cblas)
-else
-ifneq (,$(ETL_BLAS))
-CXX_FLAGS += -DETL_BLAS_MODE $(shell pkg-config --cflags cblas)
-LD_FLAGS += $(shell pkg-config --libs cblas)
+BLAS_PKG = mkl
+
+# Enable BLAS/MKL 
+CXX_FLAGS += -DETL_MKL_MODE $(shell pkg-config --cflags $(BLAS_PKG))
+LD_FLAGS += $(shell pkg-config --libs $(BLAS_PKG))
+
+# Disable some warnings for MKL
+ifneq (,$(findstring clang,$(CXX)))
+CXX_FLAGS += -Wno-tautological-compare
 endif
-endif
+
+BLAS_PKG = mkl
 
 $(eval $(call auto_folder_compile,src,-Icpm/include))
 $(eval $(call auto_add_executable,bench))
