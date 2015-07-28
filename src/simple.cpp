@@ -1,6 +1,6 @@
-#include <blaze/Math.h>
 #include <eigen3/Eigen/Dense>
 #include "etl/etl.hpp"
+#include <blaze/Math.h>
 
 #define CPM_PARALLEL_RANDOMIZE
 #define CPM_FAST_RANDOMIZE
