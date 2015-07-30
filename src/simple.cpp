@@ -45,6 +45,11 @@ CPM_SECTION_P("r = (a + 0.0 * a) * 1.0", VALUES_POLICY(500000, 1000000, 1500000,
         [](etl_dvec& r, etl_dvec& a){ r = (a + 0.0 * a) * 1.0; }
         );
 
+    CPM_TWO_PASS_NS("etl_opt",
+        [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d)); },
+        [](etl_dvec& r, etl_dvec& a){ r = opt((a + 0.0 * a) * 1.0); }
+        );
+
     CPM_TWO_PASS_NS("blaze",
         [](std::size_t d){ return std::make_tuple(blaze_dvec(d), blaze_dvec(d)); },
         [](blaze_dvec& r, blaze_dvec& a){ r = (a + 0.0 * a) * 1.0; }
