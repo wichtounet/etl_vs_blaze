@@ -18,7 +18,7 @@ LD_FLAGS += -pthread
 
 BLAS_PKG = mkl
 
-# Enable BLAS/MKL 
+# Enable BLAS/MKL
 CXX_FLAGS += -DETL_MKL_MODE $(shell pkg-config --cflags $(BLAS_PKG))
 LD_FLAGS += $(shell pkg-config --libs $(BLAS_PKG))
 
@@ -26,8 +26,6 @@ LD_FLAGS += $(shell pkg-config --libs $(BLAS_PKG))
 ifneq (,$(findstring clang,$(CXX)))
 CXX_FLAGS += -Wno-tautological-compare
 endif
-
-BLAS_PKG = mkl
 
 $(eval $(call auto_folder_compile,src,-Icpm/include))
 $(eval $(call auto_add_executable,bench))
