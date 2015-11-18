@@ -2,11 +2,8 @@
 #include "etl/etl.hpp"
 #include <blaze/Math.h>
 
-#define CPM_PARALLEL_RANDOMIZE
-#define CPM_FAST_RANDOMIZE
-
-#define CPM_WARMUP 5
-#define CPM_REPEAT 20
+#define CPM_NO_RANDOMIZATION
+#define CPM_AUTO_STEPS
 
 #define CPM_BENCHMARK "ETL/Blaze/Eigen Benchmark"
 #include "cpm/cpm.hpp"
