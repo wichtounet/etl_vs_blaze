@@ -4,6 +4,8 @@
 
 #define CPM_NO_RANDOMIZATION
 #define CPM_AUTO_STEPS
+#define CPM_STEP_ESTIMATION_MIN 0.025   //Run during 0.025 seconds for estimating steps
+#define CPM_RUNTIME_TARGET 0.9          //Run each test during 0.9 seconds
 
 #define CPM_BENCHMARK "ETL/Blaze/Eigen Benchmark"
 #include "cpm/cpm.hpp"
