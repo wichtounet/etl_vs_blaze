@@ -1,7 +1,10 @@
+#include "cblas.h"
+
 #include <eigen3/Eigen/Dense>
 #include "etl/etl.hpp"
 #include <blaze/Math.h>
 
+#define CPM_NO_RANDOM_INITIALIZATION
 #define CPM_NO_RANDOMIZATION
 #define CPM_AUTO_STEPS
 #define CPM_STEP_ESTIMATION_MIN 0.025   //Run during 0.025 seconds for estimating steps
@@ -128,17 +131,17 @@ CPM_SECTION_P("mix_matrix", NARY_POLICY(VALUES_POLICY(100, 200, 300, 400, 500, 6
         );
 }
 
-CPM_SECTION_P("r = a + b", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
+using vector_policy = VALUES_POLICY(100, 1000, 10000, 100000, 500000, 1000000, 2000000, 3000000, 4000000);
+
+CPM_SECTION_P("r = a + b", vector_policy)
     CPM_TWO_PASS_NS("etl",
         [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d), etl_dvec(d)); },
         [](etl_dvec& r, etl_dvec& a, etl_dvec& b){ r = a + b; }
         );
-
     CPM_TWO_PASS_NS("blaze",
         [](std::size_t d){ return std::make_tuple(blaze_dvec(d), blaze_dvec(d), blaze_dvec(d)); },
         [](blaze_dvec& r, blaze_dvec& a, blaze_dvec& b){ r = a + b; }
         );
-
     CPM_TWO_PASS_NS("eigen",
         [](std::size_t d){ return std::make_tuple(eigen_dvec(d), eigen_dvec(d), eigen_dvec(d)); },
         [](eigen_dvec& r, eigen_dvec& a, eigen_dvec& b){ r = a + b; }
