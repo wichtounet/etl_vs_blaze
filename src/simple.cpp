@@ -41,6 +41,14 @@ using etl_dmat = etl_dyn_matrix<double>;
 using blaze_dmat = blaze_dyn_matrix<double>;
 using eigen_dmat = eigen_dyn_matrix<double>;
 
+using etl_svec = etl_dyn_vector<float>;
+using blaze_svec = blaze_dyn_vector<float>;
+using eigen_svec = eigen_dyn_vector<float>;
+
+using etl_smat = etl_dyn_matrix<float>;
+using blaze_smat = blaze_dyn_matrix<float>;
+using eigen_smat = eigen_dyn_matrix<float>;
+
 CPM_SECTION_P("r = (a + 0.0 * a) * 1.0", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000, 4500000, 5000000))
     CPM_TWO_PASS_NS("etl",
         [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d)); },
@@ -133,7 +141,7 @@ CPM_SECTION_P("mix_matrix", NARY_POLICY(VALUES_POLICY(100, 200, 300, 400, 500, 6
 
 using vector_policy = VALUES_POLICY(100, 1000, 10000, 100000, 500000, 1000000, 2000000, 3000000, 4000000);
 
-CPM_SECTION_P("r = a + b", vector_policy)
+CPM_SECTION_P("r = a + b (d)", vector_policy)
     CPM_TWO_PASS_NS("etl",
         [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d), etl_dvec(d)); },
         [](etl_dvec& r, etl_dvec& a, etl_dvec& b){ r = a + b; }
@@ -145,6 +153,21 @@ CPM_SECTION_P("r = a + b", vector_policy)
     CPM_TWO_PASS_NS("eigen",
         [](std::size_t d){ return std::make_tuple(eigen_dvec(d), eigen_dvec(d), eigen_dvec(d)); },
         [](eigen_dvec& r, eigen_dvec& a, eigen_dvec& b){ r = a + b; }
+        );
+}
+
+CPM_SECTION_P("r = a + b (s)", vector_policy)
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d){ return std::make_tuple(etl_svec(d), etl_svec(d), etl_svec(d)); },
+        [](etl_svec& r, etl_svec& a, etl_svec& b){ r = a + b; }
+        );
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d){ return std::make_tuple(blaze_svec(d), blaze_svec(d), blaze_svec(d)); },
+        [](blaze_svec& r, blaze_svec& a, blaze_svec& b){ r = a + b; }
+        );
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d){ return std::make_tuple(eigen_svec(d), eigen_svec(d), eigen_svec(d)); },
+        [](eigen_svec& r, eigen_svec& a, eigen_svec& b){ r = a + b; }
         );
 }
 
