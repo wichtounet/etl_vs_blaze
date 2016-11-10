@@ -22,6 +22,9 @@ template<typename T>
 using blaze_dyn_vector = blaze::DynamicVector<T>;
 
 template<typename T>
+using blaze_dyn_vector_row = blaze::DynamicVector<T,blaze::rowVector>;
+
+template<typename T>
 using etl_dyn_matrix = etl::dyn_matrix<T>;
 
 template<typename T>
@@ -35,6 +38,7 @@ using eigen_dyn_matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
 
 using etl_dvec = etl_dyn_vector<double>;
 using blaze_dvec = blaze_dyn_vector<double>;
+using blaze_dvec_row = blaze_dyn_vector_row<double>;
 using eigen_dvec = eigen_dyn_vector<double>;
 
 using etl_dmat = etl_dyn_matrix<double>;
@@ -236,6 +240,40 @@ CPM_SECTION_P("R = R'", NARY_POLICY(VALUES_POLICY(64, 64, 128, 256, 256, 256, 30
     CPM_TWO_PASS_NS("eigen",
         [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_dmat(d1,d2)); },
         [](eigen_dmat& R){ R.transposeInPlace(); }
+        );
+}
+
+CPM_SECTION_P("r = a * B", NARY_POLICY(VALUES_POLICY(16, 32, 64, 128, 256, 512, 1024, 2048), VALUES_POLICY(16, 32, 64, 128, 256, 512, 1024, 2048)))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dvec(d1), etl_dmat(d1, d2), etl_dvec(d2)); },
+        [](etl_dvec& a, etl_dmat& B, etl_dvec& r){ r = a * B; }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(blaze_dvec_row(d1), blaze_dmat(d1, d2), blaze_dvec_row(d2)); },
+        [](blaze_dvec_row& a, blaze_dmat& B, blaze_dvec_row& r){ r = a * B; }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_dvec(d1), eigen_dmat(d1, d2), eigen_dvec(d2)); },
+        [](eigen_dvec& a, eigen_dmat& B, eigen_dvec& r){ r = a * B; }
+        );
+}
+
+CPM_SECTION_P("r = A * b", NARY_POLICY(VALUES_POLICY(16, 32, 64, 128, 256, 512, 1024, 2048), VALUES_POLICY(16, 32, 64, 128, 256, 512, 1024, 2048)))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dmat(d1, d2), etl_dvec(d2), etl_dvec(d1)); },
+        [](etl_dmat& A, etl_dvec& b, etl_dvec& r){ r = A * b; }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(blaze_dmat(d1, d2), blaze_dvec(d2), blaze_dvec(d1)); },
+        [](blaze_dmat& A, blaze_dvec& b, blaze_dvec& r){ r = A * b; }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_dmat(d1, d2), eigen_dvec(d2), eigen_dvec(d1)); },
+        [](eigen_dmat& A, eigen_dvec& b, eigen_dvec& r){ r = A * b; }
         );
 }
 
