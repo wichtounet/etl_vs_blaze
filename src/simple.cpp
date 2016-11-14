@@ -53,6 +53,34 @@ using etl_smat = etl_dyn_matrix<float>;
 using blaze_smat = blaze_dyn_matrix<float>;
 using eigen_smat = eigen_dyn_matrix<float>;
 
+CPM_SECTION_P("r = exp(a) (s)", VALUES_POLICY(1000, 10000, 100000, 500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d){ return std::make_tuple(etl_svec(d), etl_svec(d)); },
+        [](etl_svec& r, etl_svec& a){ r = exp(a); }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d){ return std::make_tuple(blaze_svec(d), blaze_svec(d)); },
+        [](blaze_svec& r, blaze_svec& a){ r = exp(a); }
+        );
+
+    // Eigen?
+}
+
+CPM_SECTION_P("r = exp(a) (d)", VALUES_POLICY(10000, 100000, 500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000))
+    CPM_TWO_PASS_NS("etl",
+        [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d)); },
+        [](etl_dvec& r, etl_dvec& a){ r = exp(a); }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d){ return std::make_tuple(blaze_dvec(d), blaze_dvec(d)); },
+        [](blaze_dvec& r, blaze_dvec& a){ r = exp(a); }
+        );
+
+    // Eigen?
+}
+
 CPM_SECTION_P("r = (a + 0.0 * a) * 1.0", VALUES_POLICY(500000, 1000000, 1500000, 2000000, 2500000, 3000000, 3500000, 4000000, 4500000, 5000000))
     CPM_TWO_PASS_NS("etl",
         [](std::size_t d){ return std::make_tuple(etl_dvec(d), etl_dvec(d)); },
