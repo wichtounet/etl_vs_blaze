@@ -288,10 +288,41 @@ CPM_SECTION_P("r = a * B", NARY_POLICY(VALUES_POLICY(16, 32, 64, 128, 256, 512, 
         );
 }
 
-CPM_SECTION_P("r = A * b", NARY_POLICY(VALUES_POLICY(16, 32, 64, 128, 256, 512, 1024, 2048), VALUES_POLICY(16, 32, 64, 128, 256, 512, 1024, 2048)))
-    CPM_TWO_PASS_NS("etl",
+using gemv_policy = NARY_POLICY(
+    VALUES_POLICY(16, 32, 64, 128, 256, 512, 1000, 2000, 3000, 4000, 5000, 6000),
+    VALUES_POLICY(16, 32, 64, 128, 256, 512, 1000, 2000, 3000, 4000, 5000, 6000));
+
+CPM_SECTION_P("r = A * b (s)", gemv_policy)
+    CPM_TWO_PASS_NS("etl-vec",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_smat(d1, d2), etl_svec(d2), etl_svec(d1)); },
+        [](etl_smat& A, etl_svec& b, etl_svec& r){ r = selected_helper(etl::gemm_impl::VEC, A * b); }
+        );
+
+    CPM_TWO_PASS_NS("etl-blas",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_smat(d1, d2), etl_svec(d2), etl_svec(d1)); },
+        [](etl_smat& A, etl_svec& b, etl_svec& r){ r = selected_helper(etl::gemm_impl::BLAS, A * b); }
+        );
+
+    CPM_TWO_PASS_NS("blaze",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(blaze_smat(d1, d2), blaze_svec(d2), blaze_svec(d1)); },
+        [](blaze_smat& A, blaze_svec& b, blaze_svec& r){ r = A * b; }
+        );
+
+    CPM_TWO_PASS_NS("eigen",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(eigen_smat(d1, d2), eigen_svec(d2), eigen_svec(d1)); },
+        [](eigen_smat& A, eigen_svec& b, eigen_svec& r){ r = A * b; }
+        );
+}
+
+CPM_SECTION_P("r = A * b (d)", gemv_policy)
+    CPM_TWO_PASS_NS("etl-vec",
         [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dmat(d1, d2), etl_dvec(d2), etl_dvec(d1)); },
-        [](etl_dmat& A, etl_dvec& b, etl_dvec& r){ r = A * b; }
+        [](etl_dmat& A, etl_dvec& b, etl_dvec& r){ r = selected_helper(etl::gemm_impl::VEC, A * b); }
+        );
+
+    CPM_TWO_PASS_NS("etl-blas",
+        [](std::size_t d1, std::size_t d2){ return std::make_tuple(etl_dmat(d1, d2), etl_dvec(d2), etl_dvec(d1)); },
+        [](etl_dmat& A, etl_dvec& b, etl_dvec& r){ r = selected_helper(etl::gemm_impl::BLAS, A * b); }
         );
 
     CPM_TWO_PASS_NS("blaze",
