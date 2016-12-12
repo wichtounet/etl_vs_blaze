@@ -7,10 +7,6 @@ include make-utils/cpp-utils.mk
 
 CXX_FLAGS += -Ietl/include -Ietl/lib/include
 
-ifneq (,$(findstring clang,$(CXX)))
-CXX_FLAGS += -stdlib=libc++
-endif
-
 # Enable vectorization
 CXX_FLAGS += -DETL_VECTORIZE_FULL
 
